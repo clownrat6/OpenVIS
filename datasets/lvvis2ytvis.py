@@ -47,9 +47,6 @@ def annotations_formatting(anns, err_vids):
             err_st_idx = err_vids[vid_id][0]
             ann['segmentations'] = ann['segmentations'][:err_st_idx]
             ann['areas'] = ann['areas'][:err_st_idx]
-        else:
-            new_anns.append(ann)
-            continue
 
         bboxes = []
         for segm in ann['segmentations']:
