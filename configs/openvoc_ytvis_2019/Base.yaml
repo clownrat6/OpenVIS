@@ -18,7 +18,7 @@ DATASETS:
   TRAIN: ("ytvis_2019_train",)
   TEST: ("lvvis_val", )
 SOLVER:
-  IMS_PER_BATCH: 2
+  IMS_PER_BATCH: 8
   BASE_LR: 0.0001
   STEPS: (10000,)
   MAX_ITER: 12000

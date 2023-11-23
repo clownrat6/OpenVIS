@@ -1,7 +1,7 @@
 _BASE_: Base.yaml
 MODEL:
-  WEIGHTS: 'work_dirs/openvoc_ytvis_2019/san_online_R50_bs8_12000st/model_0005999.pth'
-  META_ARCHITECTURE: "BriVIS"
+  WEIGHTS: 'work_dirs/openvoc_ytvis_2019/san_online_R50_bs8_12000st/model_0000999.pth'
+  META_ARCHITECTURE: "BriVISOnline"
   SEM_SEG_HEAD:
     NAME: "MaskFormerHead"
     IGNORE_VALUE: 255
