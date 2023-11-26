@@ -16,9 +16,9 @@ MODEL:
     RES5_MULTI_GRID: [1, 1, 1]  # not used
 DATASETS:
   TRAIN: ("lvvis_train",)
-  TEST: ("lvvis_val", )
+  TEST: ("burst_val", )
 SOLVER:
-  IMS_PER_BATCH: 2
+  IMS_PER_BATCH: 8
   BASE_LR: 0.0001
   STEPS: (10000,)
   MAX_ITER: 12000
@@ -39,7 +39,7 @@ INPUT:
   MIN_SIZE_TRAIN_SAMPLING: "choice_by_clip"
   RANDOM_FLIP: "flip_by_clip"
   AUGMENTATIONS: []
-  MIN_SIZE_TRAIN: (360, 480)
+  MIN_SIZE_TRAIN: (240, 360, 480)
   MIN_SIZE_TEST: 360
   CROP:
     ENABLED: False
