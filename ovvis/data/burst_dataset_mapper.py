@@ -357,9 +357,4 @@ class BURSTDatasetMapper:
                 instances.gt_masks = BitMasks(torch.empty((0, *image_shape)))
             dataset_dict['instances'].append(instances)
 
-        print(dataset_dict.keys())
-        [print(x.shape) for x in dataset_dict["image"]]
-        print(len(dataset_dict['instances']), len(dataset_dict['annotated_image_paths']))
-        exit(0)
-
         return dataset_dict
