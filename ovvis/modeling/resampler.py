@@ -98,14 +98,14 @@ class TemporalInstanceResampler(nn.Module):
             window_flag = True
             assert len(src) == len(pos) == len(mask_feats) == len(attn_feats) == len(clip_bk_feats)
             bs, t, q = frame_embeds[0].shape[0], sum([f.shape[1] for f in frame_embeds]), frame_embeds[0].shape[2]
-            num_feature_level = len(src[0])
+            num_feature_level = len(size_list)
             outputs_class, outputs_mask, attn_mask = self.forward_prediction_heads_list([einops.rearrange(f, 'b t q c -> q (b t) c') for f in frame_embeds], mask_feats, attn_feats, clip_bk_feats, attn_mask_target_size=size_list[0])
             frame_embeds = torch.cat(frame_embeds, dim=1)
         else:
             bs, t, q = frame_embeds.shape[:3]
-            num_feature_level = len(src)
+            num_feature_level = len(size_list)
             outputs_class, outputs_mask, attn_mask = self.forward_prediction_heads(einops.rearrange(frame_embeds, 'b t q c -> q (b t) c'), mask_feats, attn_feats, clip_bk_feats, attn_mask_target_size=size_list[0])
-        
+
         predictions_class.append(outputs_class)
         predictions_mask.append(outputs_mask)
 
@@ -400,12 +400,12 @@ class BasicTemporalInstanceResampler(nn.Module):
             window_flag = True
             assert len(src) == len(pos) == len(mask_feats)
             bs, t, q = frame_embeds[0].shape[0], sum([f.shape[1] for f in frame_embeds]), frame_embeds[0].shape[2]
-            num_feature_level = len(src[0])
+            num_feature_level = len(size_list)
             outputs_class, outputs_mask, attn_mask = self.forward_prediction_heads_list([einops.rearrange(f, 'b t q c -> q (b t) c') for f in frame_embeds], mask_feats, attn_mask_target_size=size_list[0])
             frame_embeds = torch.cat(frame_embeds, dim=1)
         else:
             bs, t, q = frame_embeds.shape[:3]
-            num_feature_level = len(src)
+            num_feature_level = len(size_list)
             outputs_class, outputs_mask, attn_mask = self.forward_prediction_heads(einops.rearrange(frame_embeds, 'b t q c -> q (b t) c'), mask_feats, attn_mask_target_size=size_list[0])
         
         predictions_class.append(outputs_class)
@@ -413,9 +413,11 @@ class BasicTemporalInstanceResampler(nn.Module):
 
         frame_tgt = einops.rearrange(frame_embeds, 'b t q c -> t (b q) c')
 
+        temporal_tgt = frame_tgt
+
         for i in range(self.num_layers):
             long_tgt = self.long_aggregate_layers[i](
-                frame_tgt, tgt_mask=None,
+                temporal_tgt, tgt_mask=None,
                 tgt_key_padding_mask=None,
                 query_pos=None
             )
@@ -543,6 +545,180 @@ class BasicTemporalInstanceResampler(nn.Module):
             attn_masks_list.append(attn_mask)
 
         return torch.cat(logits_list, dim=0), torch.cat(masks_list, dim=0), torch.cat(attn_masks_list, dim=0)
+
+    @torch.jit.unused
+    def _set_aux_loss(self, out_attn_biases, out_masks):
+        # this is a workaround to make torchscript happy, as torchscript
+        # doesn't support dictionary with non-homogeneous values, such
+        # as a dict having both a Tensor and a list.
+        return [{"pred_logits": a, "pred_masks": b} for a, b in zip(out_attn_biases[:-1], out_masks[:-1])]
+
+
+class TemporalInstanceInteractor(nn.Module):
+
+    def __init__(self, hidden_dim=256, feed_dim=2048, nheads=8, nlayers=6, window_size=10):
+        super().__init__()
+        # define Transformer decoder here
+        self.num_heads = nheads
+        self.num_layers = nlayers
+        self.window_size = window_size
+
+        self.long_aggregate_layers = nn.ModuleList()
+        self.short_aggregate_layers = nn.ModuleList()
+        self.aggregate_norms = nn.ModuleList()
+
+        self.transformer_cross_attention_layers = nn.ModuleList()
+        self.transformer_self_attention_layers = nn.ModuleList()
+        self.transformer_ffn_layers = nn.ModuleList()
+
+        for _ in range(self.num_layers):
+            self.long_aggregate_layers.append(
+                SelfAttentionLayer(
+                    d_model=hidden_dim,
+                    nhead=nheads,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+            self.short_aggregate_layers.append(
+                nn.Sequential(
+                    nn.Conv1d(hidden_dim, hidden_dim,
+                              kernel_size=5, stride=1,
+                              padding='same', padding_mode='replicate'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv1d(hidden_dim, hidden_dim,
+                              kernel_size=3, stride=1,
+                              padding='same', padding_mode='replicate'),
+                )
+            )
+
+            self.aggregate_norms.append(nn.LayerNorm(hidden_dim))
+
+            self.transformer_cross_attention_layers.append(
+                CrossAttentionLayer(
+                    d_model=hidden_dim,
+                    nhead=nheads,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+            self.transformer_self_attention_layers.append(
+                SelfAttentionLayer(
+                    d_model=hidden_dim,
+                    nhead=nheads,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+            self.transformer_ffn_layers.append(
+                FFNLayer(
+                    d_model=hidden_dim,
+                    dim_feedforward=feed_dim,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+        self.decode_norm = nn.LayerNorm(hidden_dim)
+
+        # output FFNs
+        self.attn_embed = MLP(hidden_dim, hidden_dim, hidden_dim, 3)
+        self.mask_embed = MLP(hidden_dim, hidden_dim, hidden_dim, 3)
+
+        self.adapter = None
+        self.text_feats = None
+
+    def forward(self, src, pos, size_list, frame_embeds, mask_feats, attn_feats, adapter=None, clip_bk_feats=None, text_feats=None):
+        self.adapter = adapter
+        self.text_feats = text_feats
+
+        predictions_class = []
+        predictions_mask = []
+
+
+        bs, t, q = frame_embeds.shape[:3]
+        num_feature_level = len(size_list)
+        outputs_class, outputs_mask, attn_mask = self.forward_prediction_heads(einops.rearrange(frame_embeds, 'b t q c -> q (b t) c'), mask_feats, attn_feats, clip_bk_feats, attn_mask_target_size=size_list[0])
+
+        predictions_class.append(outputs_class)
+        predictions_mask.append(outputs_mask)
+
+        frame_tgt = einops.rearrange(frame_embeds, 'b t q c -> t (b q) c')
+        frame_tgt_sampled = einops.rearrange(frame_embeds, 'b t q c -> q (b t) c')
+
+        temporal_tgt = frame_tgt
+
+        for i in range(self.num_layers):
+            long_tgt = self.long_aggregate_layers[i](
+                temporal_tgt, tgt_mask=None,
+                tgt_key_padding_mask=None,
+                query_pos=None
+            )
+
+            short_tgt = long_tgt.permute(1, 2, 0)  # (bq, c, t)
+            short_tgt = (self.short_aggregate_layers[i](short_tgt) + short_tgt).transpose(1, 2)
+
+            temporal_tgt = self.aggregate_norms[i](short_tgt)
+            temporal_tgt = temporal_tgt.permute(1, 0, 2)
+
+            temporal_tgt = einops.rearrange(temporal_tgt, 't (b q) c -> q (b t) c', b=bs)
+
+            level_index = i % num_feature_level
+            next_level_index = (i + 1) % num_feature_level
+
+            temporal_tgt = self.transformer_self_attention_layers[i](temporal_tgt, tgt_mask=None, tgt_key_padding_mask=None, query_pos=None)
+            temporal_tgt = self.transformer_cross_attention_layers[i](temporal_tgt, frame_tgt_sampled, memory_mask=None, memory_key_padding_mask=None, pos=None, query_pos=None)
+            temporal_tgt = self.transformer_ffn_layers[i](temporal_tgt)
+
+            outputs_class, outputs_mask, attn_mask = self.forward_prediction_heads(temporal_tgt, mask_feats, attn_feats, clip_bk_feats, attn_mask_target_size=size_list[next_level_index])
+
+            predictions_class.append(outputs_class)
+            predictions_mask.append(outputs_mask)
+
+            temporal_tgt = einops.rearrange(temporal_tgt, 'q (b t) c -> t (b q) c', b=bs)
+
+        for i in range(len(predictions_mask)):
+            predictions_mask[i] = einops.rearrange(predictions_mask[i], '(b t) q h w -> b q t h w', b=bs)
+
+        for i in range(len(predictions_class)):
+            predictions_class[i] = einops.rearrange(predictions_class[i], '(b t) q c -> b t q c', b=bs)
+
+        pred_embeds = self.decode_norm(temporal_tgt)
+        pred_embeds = einops.rearrange(pred_embeds, 't (b q) c -> b t q c', b=bs)
+
+        out = {
+            'pred_logits': predictions_class[-1],
+            'pred_masks': predictions_mask[-1],
+            'pred_embeds': pred_embeds,
+            'aux_outputs': self._set_aux_loss(predictions_class, predictions_mask)
+        }
+        self.adapter = None
+        self.text_feats = None
+        return out
+
+    def forward_prediction_heads(self, output, mask_feats, attn_feats, clip_bk_feats, attn_mask_target_size):
+        output = self.decode_norm(output).transpose(1, 0)
+
+        mask_embed = self.mask_embed(output)
+        masks = torch.einsum("bqc,bchw->bqhw", mask_embed, mask_feats)
+
+        attn_embed = self.attn_embed(output)
+        attn_biases  = torch.einsum("bqc,bnchw->bnqhw", attn_embed, attn_feats)
+
+        # NOTE: prediction is of higher-resolution
+        # [B, Q, H, W] -> [B, Q, H*W] -> [B, h, Q, H*W] -> [B*h, Q, HW]
+        attn_mask = F.interpolate(masks, size=attn_mask_target_size, mode="bilinear", align_corners=False)
+        # must use bool type
+        # If a BoolTensor is provided, positions with ``True`` are not allowed to attend while ``False`` values will be unchanged.
+        attn_mask = (attn_mask.sigmoid().flatten(2).unsqueeze(1).repeat(1, self.num_heads, 1, 1).flatten(0, 1) < 0.5).bool()
+        attn_mask = attn_mask.detach()
+
+        logits = self.adapter.get_sim_logits_frame(clip_bk_feats, attn_biases, self.text_feats)
+
+        return logits, masks, attn_mask
 
     @torch.jit.unused
     def _set_aux_loss(self, out_attn_biases, out_masks):
