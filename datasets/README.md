@@ -12,16 +12,14 @@ openvis
 │   │   ├── {train, valid, test}/
 │   │   │   ├── JPEGImages/
 │   │   │   ├── Annotations/
+│   ├── ytvis_2021
+│   │   ├── {train, valid, test}/
+│   │   │   ├── JPEGImages/
+│   │   │   ├── instances.json
 │   ├── ovis
 │   │   ├── annotations_{train, valid, test}.json/
 │   │   ├── Images/
 │   │   │   ├── {train, valid, test}/
-│   ├── uvo
-│   │   ├── uvo_videos_dense/
-│   │   ├── uvo_videos_dense_frames/
-│   │   ├── VideoDenseSet/
-│   │   │   ├── UVO_video_train_dense_with_label.json
-│   │   │   ├── UVO_video_val_dense_with_label.json
 │   ├── burst
 │   │   ├── annotations/
 │   │   │   ├── train/
@@ -37,7 +35,15 @@ openvis
 │   │   ├── {train, val}_ytvis_style.json
 │   │   ├── {train, val}/
 │   │   │   ├── JPEGImages/
+│   ├── coco
+│   │   ├── coco2ytvis2019_{train, val}.json
+│   │   ├── coco2ytvis2021_{train, val}.json
+│   │   ├── coco2ovis_{train, val}.json
+│   │   ├── {train, val}2017/
+│   │   ├── annotations/
+│   │   │   ├── instances_{train, val}2017.json
 ```
+
 
 ## Youtube-VIS
 
@@ -68,24 +74,22 @@ youtube-vis 2021:
 3. unzip `{train,valid,test}.zip` to `datasets/ytvis_2021/{train,valid,test}/`
 
 
-## UVO
+## OVIS
 
 ```
 openvis
 ├── datasets
-│   ├── uvo
-│   │   ├── uvo_videos_dense/
-│   │   ├── uvo_videos_dense_frames/
-│   │   ├── VideoDenseSet/
-│   │   │   ├── UVO_video_train_dense_with_label.json
-│   │   │   ├── UVO_video_val_dense_with_label.json
+│   ├── ovis
+│   │   ├── annotations_{train, valid, test}.json/
+│   │   ├── Images/
+│   │   │   ├── {train, valid, test}/
 ```
 
-1. Download pre-processed videos (`uvo_videos_dense.zip`) from [Tarun Kalluri's google drive](https://drive.google.com/drive/folders/1fOhEdHqrp_6D_tBsrR9hazDLYV2Sw1XC)
-2. Unzip `uvo_videos_dense.zip` to `datasets/uvo/uvo_videos_dense`
-3. Convert videos to frames by: `python datasets/uvo_video2frames.py` and the frames are storaged in `datasets/uvo/uvo_videos_dense_frames`;
-4. Download annotations (`VideoDenseSet`) from [UVO v1.0 google drive](https://drive.google.com/drive/folders/1HqEX_bJ9k0qNf9jw2D6RG1X8jHh4_7GH)
-5. Put `VideoDenseSet` to `datasets/uvo/VideoDenseSet`
+1. register [Occluded Video Instance Segmentation](https://codalab.lisn.upsaclay.fr/competitions/4763#participate)
+2. download `{train,valid,test}.zip` from [OVIS frames google drive](https://drive.google.com/drive/folders/1eE4lLKCbv54E866XBVce_ebh3oXYq99b)
+3. download `{train,valid,test}.json` from [OVIS annotations google drive](https://drive.google.com/drive/folders/1eE4lLKCbv54E866XBVce_ebh3oXYq99b)
+4. unzip `{train,valid,test}.zip` to `datasets/ovis/Images/{train,valid,test}/`
+5. put `annotations/{train,valid,test}.json` to `datasets/ovis/annotations_{train,valid,test}.json`
 
 
 ## BURST
@@ -119,6 +123,7 @@ unzip 3-TAO_TEST.zip
 3. download annotations from [BURST-benchmark](https://github.com/Ali2500/BURST-benchmark): `wget https://omnomnom.vision.rwth-aachen.de/data/BURST/annotations.zip`
 4. uncompress `annotations.zip` to `datasets/burst/annotations`
 
+
 ## LVVIS
 
 ```
@@ -136,10 +141,36 @@ openvis
     * download `val.zip` from [google drive](https://drive.google.com/file/d/1vTYUz_XLOBnYb9e7upJsZM-nQz2S6wDn/view?usp=drive_link);
     * uncompressed `{train, val}.zip` to `datasets/lvvis/{train, val}/JPEGImages/`;
 2. download annotations from [LV-VIS github](https://github.com/haochenheheda/LVVIS);
-    * download `train_instances.json` from [google drive](https://drive.google.com/file/d/1er2lBQLF75TI5O4wzGyur0YYoohMK6C3/view?usp=sharing);
-    * download `val_instances.json` from [google drive](https://drive.google.com/file/d/1vTYUz_XLOBnYb9e7upJsZM-nQz2S6wDn/view?usp=drive_link);
+    * download `train_instances.json` from [google drive](https://drive.google.com/file/d/1k-o8gBMD7m1-fghw-a1iNDZCi2ZZgV9g/view?usp=sharing);
+    * download `val_instances.json` from [google drive](https://drive.google.com/file/d/1stPD818M3gv7zUV3UIZG1Suru7Tk54jo/view?usp=sharing);
     * put `{train, val}_instances.json` to `datasets/lvvis/{train, val}_instances.json`;
 3. convert annotations to youtube-vis style: 
 ```
 python datasets/lvvis2ytvis.py
+```
+
+
+## COCO
+
+```
+$ROOT
+├── datasets
+│   ├── coco
+│   │   ├── coco2ytvis2019_{train, val}.json
+│   │   ├── coco2ytvis2021_{train, val}.json
+│   │   ├── coco2ovis_{train, val}.json
+│   │   ├── {train, val}2017/
+│   │   ├── annotations/
+│   │   │   ├── instances_{train, val}2017.json
+```
+
+1. download images from [COCO homepage](https://cocodataset.org/#home);
+    * download `train2017.zip`, `val2017.zip`;
+    * uncompress `{train, val}2017,zip` to `datasets/coco/{train, val}2017/`;
+2. download annotations from [COCO homepage](https://cocodataset.org/#home);
+    * download `annotations_trainval2017.zip`;
+    * uncompress `annotations_trainval2017.zip` to `datasets/coco/annotations`;
+3 convert annotations to youtube-vis style:
+```
+python datasets/coco2ytvis.py
 ```

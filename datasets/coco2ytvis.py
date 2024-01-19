@@ -1,6 +1,8 @@
 import os
 import json
 
+from tqdm import tqdm
+
 _root = os.getenv("DETECTRON2_DATASETS", "datasets")
 
 COCO_TO_YTVIS_2019 = {
@@ -45,7 +47,7 @@ for convert_dict, src_path, out_path, msg in convert_list:
 
     converted_item_num = 0
     out_json['annotations'] = []
-    for anno in src_json['annotations']:
+    for anno in tqdm(src_json['annotations']):
         if anno["category_id"] not in convert_dict:
             continue
 
