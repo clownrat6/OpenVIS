@@ -2,6 +2,7 @@
 
 ## Getting Started
 
+* Download [Mask2former R50 weights trained on COCO Instance Segmentation](https://github.com/facebookresearch/Mask2Former/blob/main/MODEL_ZOO.md) and put it in `pretrained/model_final_3c8ec9.pkl`
 * [Dataset Prepare](datasets/README.md)
 * [Installation](INSTALL.md)
 
