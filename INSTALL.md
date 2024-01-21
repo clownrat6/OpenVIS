@@ -25,7 +25,7 @@ pip install -e third_parties/mask_adapted_clip
 ```
 - CUDA kernel for `MSDeformAttn`
 ```
-cd ovvis/modeling/pixel_decoder/ops
+cd openvis/modeling/pixel_decoder/ops
 bash make.sh
 ```
 - trackeval: Refer to [TrackEval](https://github.com/JonathonLuiten/TrackEval)

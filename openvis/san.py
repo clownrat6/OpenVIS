@@ -195,7 +195,7 @@ class SANOnline(MinVIS):
         else:
             outputs = self.post_processing(outputs)
 
-            mask_cls_results = outputs["pred_logits"]
+            mask_cls_results = outputs["pred_logits"].mean(dim=1)
             mask_pred_results = outputs["pred_masks"]
 
             mask_cls_result = mask_cls_results[0]
@@ -221,7 +221,7 @@ class SANOnline(MinVIS):
             height = input_per_image.get("height", image_size[0])  # raw image size before data augmentation
             width = input_per_image.get("width", image_size[1])
 
-            return self.inference_video(mask_cls_result, mask_pred_result, image_size, height, width)
+            return retry_if_cuda_oom(self.inference_video)(mask_cls_result, mask_pred_result, image_size, height, width)
 
     def run_window_inference(self, images_tensor, clip_feats, window_size=30):
         iters = len(images_tensor) // window_size
@@ -242,7 +242,7 @@ class SANOnline(MinVIS):
         # merge outputs
         outputs = {}
         outputs['class_attn_biases'] = torch.cat([x['class_attn_biases'] for x in out_list], dim=1).detach()
-        outputs['pred_masks'] = torch.cat([x['pred_masks'] for x in out_list], dim=2).detach()
-        outputs['pred_embeds'] = torch.cat([x['pred_embeds'] for x in out_list], dim=2).detach()
+        outputs['pred_masks'] = torch.cat([x['pred_masks'] for x in out_list], dim=2).detach().cpu().to(torch.float32)
+        outputs['pred_embeds'] = torch.cat([x['pred_embeds'] for x in out_list], dim=1).detach()
 
         return outputs

@@ -16,7 +16,7 @@ MODEL:
     COMMON_STRIDE: 4
     TRANSFORMER_ENC_LAYERS: 6
   MASK_FORMER:
-    TRANSFORMER_DECODER_NAME: "AdapterFrameMultiScaleMaskedTransformerDecoder"
+    TRANSFORMER_DECODER_NAME: "EmbeddingFrameMultiScaleMaskedTransformerDecoder"
     TRANSFORMER_IN_FEATURE: "multi_scale_pixel_decoder"
     DEEP_SUPERVISION: True
     NO_OBJECT_WEIGHT: 0.1
@@ -37,27 +37,19 @@ MODEL:
     OVERSAMPLE_RATIO: 3.0
     IMPORTANCE_SAMPLE_RATIO: 0.75
     TEST:
+      WINDOW_INFERENCE: False
+      WINDOW_SIZE: 10
       SEMANTIC_ON: False
       INSTANCE_ON: True
       PANOPTIC_ON: False
       OVERLAP_THRESHOLD: 0.8
       OBJECT_MASK_THRESHOLD: 0.8
-  FRAME_CLIP_ADAPTER:
-    NAME: "FrameClipAdapter"
-    PROMPT_LEARNER: "vild"
+  CLIP_ADAPTER:
+    NAME: "BgClipAdapter"
+    PROMPT_NAME: "vild"
     CLIP_MODEL_NAME: "ViT-B/16"
-    MASK_FILL: "mean"
-    MASK_EXPAND_RATIO: 1.0
-    MASK_THR: 0.5 # choose the foreground objects
-    MASK_MATTING: False # use soft background, default not used
-    REGION_RESIZED: True # resize to the input of clip, e.g., 224
     CLIP_ENSEMBLE: True # use ensemble of two classification branches
     CLIP_ENSEMBLE_WEIGHT: 0.5
-  VIDEO_CLIP_ADAPTER:
-    NAME: "VideoQueryClipAdapter"
-    PROMPT_LEARNER: "vild"
-    CLIP_MODEL_NAME: "ViT-B/16"
-    CLIP_ENSEMBLE: False # use ensemble of two classification branches
-    CLIP_ENSEMBLE_WEIGHT: 0.5
+    CLIP_EMBED_DIMS: 512
 INPUT:
   SAMPLING_FRAME_NUM: 1

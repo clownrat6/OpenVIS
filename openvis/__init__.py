@@ -6,9 +6,7 @@ from .modeling.video_maskformer import VideoMaskFormer
 from .modeling.minvis import MinVIS
 
 from .simplebsl import SimpleBaseline, SimpleBaselineOnline
-from .san import HardSAN, SAN, SANOnline
-from .vanilla_san import VanillaSAN, VanillaSANOnline
+from .san import SAN, SANOnline
 from .ov2seg import OV2Seg
-from .openvis import OpenVIS, OpenVISOnline
-from .brivis import BriVISOnline
-from .mask_tuning import MaskTuning
+from .openvis import OpenVIS
+from .brivis import BriVIS

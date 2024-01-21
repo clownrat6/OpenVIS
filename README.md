@@ -6,6 +6,10 @@
 * [Dataset Prepare](datasets/README.md)
 * [Installation](INSTALL.md)
 
+## Updates
+
+* [2024.1.21] Model ZOO is in preparetion. If your have any problems about this codebase, please contact me `cyanlaser@stu.pku.edu.cn`
+
 ## Training
 
 1. Reproducing OpenVIS:

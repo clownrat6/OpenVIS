@@ -16,7 +16,7 @@ MODEL:
     RES5_MULTI_GRID: [1, 1, 1]  # not used
 DATASETS:
   TRAIN: ("ytvis_2019_train",)
-  TEST: ("burst_val", )
+  TEST: ("lvvis_val", )
 SOLVER:
   IMS_PER_BATCH: 8
   BASE_LR: 0.0001

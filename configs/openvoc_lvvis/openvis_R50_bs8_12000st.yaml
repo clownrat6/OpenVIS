@@ -42,20 +42,9 @@ MODEL:
       PANOPTIC_ON: False
       OVERLAP_THRESHOLD: 0.8
       OBJECT_MASK_THRESHOLD: 0.8
-  FRAME_CLIP_ADAPTER:
-    NAME: "FrameClipAdapter"
-    PROMPT_LEARNER: "vild"
-    CLIP_MODEL_NAME: "ViT-B/16"
-    MASK_FILL: "mean"
-    MASK_EXPAND_RATIO: 1.0
-    MASK_THR: 0.5 # choose the foreground objects
-    MASK_MATTING: False # use soft background, default not used
-    REGION_RESIZED: True # resize to the input of clip, e.g., 224
-    CLIP_ENSEMBLE: True # use ensemble of two classification branches
-    CLIP_ENSEMBLE_WEIGHT: 0.5
-  VIDEO_CLIP_ADAPTER:
-    NAME: "VideoQueryClipAdapter"
-    PROMPT_LEARNER: "video_vild"
+  CLIP_ADAPTER:
+    NAME: "ClipAdapter"
+    PROMPT_NAME: "vild"
     CLIP_MODEL_NAME: "ViT-B/16"
     CLIP_ENSEMBLE: True # use ensemble of two classification branches
     CLIP_ENSEMBLE_WEIGHT: 0.5

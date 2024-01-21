@@ -42,7 +42,7 @@ from detectron2.solver.build import maybe_add_gradient_clipping
 from detectron2.utils.logger import setup_logger
 
 # MaskFormer
-from ovvis.data import (
+from openvis.data import (
     YTVISDatasetMapper,
     YTVISEvaluator,
     BURSTDatasetMapper,
@@ -52,7 +52,7 @@ from ovvis.data import (
     build_detection_train_loader,
     build_detection_test_loader,
 )
-from ovvis.config import (
+from openvis.config import (
     add_maskformer2_config,
     add_maskformer2_video_config,
     add_minvis_config,
@@ -278,7 +278,7 @@ def setup(args):
     default_setup(cfg, args)
     # Setup logger for "mask_former" module
     setup_logger(name="mask2former")
-    setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="ovvis")
+    setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="openvis")
     return cfg
 
 
