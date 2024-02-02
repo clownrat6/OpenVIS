@@ -119,9 +119,9 @@ unzip 2-TAO_VAL.zip
 unzip 3-TAO_TEST.zip
 ```
 2. put uncompressed folders to `datasets/burst/frames/{train, val, test}`
-2. sign in [MOTchallenge](https://motchallenge.net/login/) and download AVA & HACS videos
-3. download annotations from [BURST-benchmark](https://github.com/Ali2500/BURST-benchmark): `wget https://omnomnom.vision.rwth-aachen.de/data/BURST/annotations.zip`
-4. uncompress `annotations.zip` to `datasets/burst/annotations`
+3. sign in [MOTchallenge](https://motchallenge.net/login/) and download AVA & HACS videos
+4. download annotations from [BURST-benchmark](https://github.com/Ali2500/BURST-benchmark): `wget https://omnomnom.vision.rwth-aachen.de/data/BURST/annotations.zip`
+5. uncompress `annotations.zip` to `datasets/burst/annotations`
 
 
 ## LVVIS
