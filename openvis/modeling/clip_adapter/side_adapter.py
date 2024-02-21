@@ -153,19 +153,19 @@ class SideAdapter(nn.Module):
         x = vis.conv1(x)  # shape = [*, width, grid, grid]
         b, _, h, w = x.shape
         x = x.reshape(x.shape[0], x.shape[1], -1) # shape = [*, width, grid ** 2]
-        x = x.permute(0, 2, 1)                    # shape = [*, grid ** 2, width]
+        x = x.permute(0, 2, 1).contiguous()       # shape = [*, grid ** 2, width]
         x = torch.cat([vis.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
         pos_embed = resize_pos_embed2d(vis.positional_embedding.to(x.dtype)[None, ...], (self.grid_size, self.grid_size), (h, w))[0]
         x = x + pos_embed
         x = vis.ln_pre(x)
 
-        x = x.permute(1, 0, 2)  # NLD -> LND
+        x = x.permute(1, 0, 2).contiguous()  # NLD -> LND
         resblocks = vis.transformer.resblocks[:self.broken_idx]
 
-        outputs = [(x[0:1], x[1:].permute(1, 2, 0).reshape(b, -1, h, w))]
+        outputs = [(x[0:1], x[1:].permute(1, 2, 0).reshape(b, -1, h, w).contiguous())]
         for i, resblock in enumerate(resblocks, start=1):
             x = resblock(x)
-            outputs.append((x[0:1], x[1:].permute(1, 2, 0).reshape(b, -1, h, w)))
+            outputs.append((x[0:1], x[1:].permute(1, 2, 0).reshape(b, -1, h, w).contiguous()))
 
         mg_feats = [f[1] for i, f in enumerate(outputs) if i in self.merge_ids]
         mg_feats = [self.attn_projs[i](f) for i, f in enumerate(mg_feats)]
