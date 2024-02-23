@@ -322,8 +322,8 @@ class MinVIS(nn.Module):
         bs, t = pred_logits.shape[:2]
         pred_masks = einops.rearrange(pred_masks, 'b q t h w -> b t q h w')
 
-        frame_logits = batch_index(pred_logits.flatten(0, 1), video_indices.flatten(0, 1))
-        frame_masks = batch_index(pred_masks.flatten(0, 1), video_indices.flatten(0, 1))
+        frame_logits = batch_index(pred_logits.flatten(0, 1), video_indices.flatten(0, 1).to(pred_logits.device))
+        frame_masks = batch_index(pred_masks.flatten(0, 1), video_indices.flatten(0, 1).to(pred_masks.device))
 
         frame_logits = einops.rearrange(frame_logits, '(b t) q c -> b t q c', b=bs)
         frame_masks = einops.rearrange(frame_masks, '(b t) q h w -> b q t h w', b=bs)

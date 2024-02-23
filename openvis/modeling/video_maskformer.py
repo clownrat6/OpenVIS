@@ -270,7 +270,7 @@ class VideoMaskFormer(nn.Module):
             labels_per_image = labels[topk_indices]
             topk_indices = topk_indices // num_classes
             entropys = torch.sum(-scores[topk_indices] * torch.log(scores[topk_indices]), dim=-1) 
-            pred_masks = pred_masks[topk_indices]
+            pred_masks = pred_masks[topk_indices.to(pred_masks.device)]
             pred_masks = pred_masks[:, :, :img_size[0], :img_size[1]]
 
             pred_masks = F.interpolate(pred_masks, size=(output_height, output_width), mode="bilinear", align_corners=False)
