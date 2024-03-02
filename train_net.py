@@ -92,9 +92,9 @@ class Trainer(DefaultTrainer):
         mappers = []
         for _, dataset_name in enumerate(cfg.DATASETS.TRAIN):
 
-            if dataset_name in ["ytvis_2019_train", "ytvis_2021_train", "burst_train", "uvo_train", "ovis_train", "burst_ytvis_train", "lvvis_train"]:
+            if dataset_name in ["ytvis_2019_train2coco", "ytvis_2019_train", "ytvis_2021_train", "ovis_train" "lvvis_train"]:
                 _mapper = YTVISDatasetMapper
-            elif dataset_name in ["coco2ytvis2019_train", "coco2ytvis2021_train"]:
+            elif dataset_name in ["coco_2017_train"]:
                 _mapper = CocoClipDatasetMapper
 
             mappers.append(_mapper(cfg, is_train=True, src_dataset_name=dataset_name))
