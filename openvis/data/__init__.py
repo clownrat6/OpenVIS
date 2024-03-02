@@ -4,7 +4,7 @@ from .datasets.ytvis import *
 from .datasets.burst import *
 from .datasets.ovis import *
 from .datasets.lvvis import *
-from .datasets.coco_ytvis import *
+from .datasets.ytvis_coco import *
 
 from .ytvis_dataset_mapper import YTVISDatasetMapper, CocoClipDatasetMapper
 from .burst_dataset_mapper import BURSTDatasetMapper

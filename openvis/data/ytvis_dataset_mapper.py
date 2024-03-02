@@ -20,8 +20,6 @@ from detectron2.data import transforms as T
 from pycocotools import mask as coco_mask
 
 from .augmentation import build_pseudo_augmentation, build_augmentation
-from .datasets.coco_ytvis import COCO_TO_YTVIS_2019, COCO_TO_YTVIS_2021, COCO_TO_OVIS
-
 
 __all__ = ["YTVISDatasetMapper", "CocoClipDatasetMapper"]
 
@@ -387,31 +385,10 @@ class CocoClipDatasetMapper:
         self.sampling_frame_range   = sampling_frame_range
         self.sampling_frame_shuffle = sampling_frame_shuffle
         self.sampling_frame_reverse = sampling_frame_reverse
-        self.sampling_frame_ratio   = 1.0
         self.src_dataset_name       = src_dataset_name
         self.tgt_dataset_name       = tgt_dataset_name
 
-        self.convert_flag = not (src_dataset_name == tgt_dataset_name)
-
-        if self.convert_flag:
-            self.src_metadata = MetadataCatalog.get(src_dataset_name)
-            self.tgt_metadata = MetadataCatalog.get(tgt_dataset_name)
-            if tgt_dataset_name.startswith("ytvis_2019"):
-                src2tgt = COCO_TO_YTVIS_2019
-            elif tgt_dataset_name.startswith("hqytvis"):
-                src2tgt = COCO_TO_YTVIS_2019
-            elif tgt_dataset_name.startswith("ytvis_2021"):
-                src2tgt = COCO_TO_YTVIS_2021
-            elif tgt_dataset_name.startswith("ovis"):
-                src2tgt = COCO_TO_OVIS
-            else:
-                raise NotImplementedError
-
-            self.src2tgt = {}
-            for k, v in src2tgt.items():
-                self.src2tgt[
-                    self.src_metadata.thing_dataset_id_to_contiguous_id[k]
-                ] = self.tgt_metadata.thing_dataset_id_to_contiguous_id[v]
+        self.sampling_frame_ratio   = 1.0
 
         # fmt: on
         logger = logging.getLogger(__name__)
@@ -553,8 +530,6 @@ class CocoClipDatasetMapper:
                     annos[idx]["segmentation"] = [np.array([0.0] * 6)]
 
             instances = utils.annotations_to_instances(annos, image_shape, mask_format="bitmask")
-            if self.convert_flag:
-                instances.gt_classes = torch.tensor([self.src2tgt[c] if c in self.src2tgt else -1 for c in instances.gt_classes.tolist()], dtype=torch.int64)
             instances.gt_ids = torch.tensor(_gt_ids)
             if instances.has("gt_masks"):
                 instances.gt_boxes = instances.gt_masks.get_bounding_boxes()

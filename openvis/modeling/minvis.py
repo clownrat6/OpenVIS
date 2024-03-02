@@ -41,21 +41,25 @@ def match_via_embeds(tgt_embeds, cur_embeds):
     return indices.tolist()
 
 
-def batch_video_match_via_embeds(embeds):
+def batch_video_match_via_embeds(orig_embeds):
     # pred_embeds: bs x t x q x c
+    embeds = orig_embeds.detach()
     bs, t = embeds.shape[:2]
     batch_indices_list = []
     out_embeds = []
     for b in range(bs):
         last_frame_embeds = embeds[b, 0]
+        _last_frame_embeds = orig_embeds[b, 0]
+
         indices_list = []
         embeds_list = []
         for i in range(t):
             indices = match_via_embeds(last_frame_embeds, embeds[b, i])
             last_frame_embeds = embeds[b, i][indices]
+            _last_frame_embeds = orig_embeds[b, i][indices]
 
             indices_list.append(indices)
-            embeds_list.append(last_frame_embeds)
+            embeds_list.append(_last_frame_embeds)
 
         batch_indices_list.append(indices_list)
         out_embeds.append(torch.stack(embeds_list))

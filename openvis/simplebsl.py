@@ -47,7 +47,11 @@ class SimpleBaseline(VideoMaskFormer):
         return class_names
 
     def forward(self, batched_inputs):
-        dataset_name = batched_inputs[0]["dataset_name"]
+        if self.training:
+            dataset_name = "ytvis_2019_train2coco"
+        else:
+            dataset_name = list(set(x["dataset_name"] for x in batched_inputs))
+            dataset_name = dataset_name[0]
 
         class_names = self.get_class_name_list(dataset_name)
         self.sem_seg_head.num_classes = len(class_names)
@@ -214,7 +218,11 @@ class SimpleBaselineOnline(MinVIS):
                     segments_info (list[dict]): Describe each segment in `panoptic_seg`.
                         Each dict contains keys "id", "category_id", "isthing".
         """
-        dataset_name = batched_inputs[0]["dataset_name"]
+        if self.training:
+            dataset_name = "ytvis_2019_train2coco"
+        else:
+            dataset_name = list(set(x["dataset_name"] for x in batched_inputs))
+            dataset_name = dataset_name[0]
 
         class_names = self.get_class_name_list(dataset_name)
         self.sem_seg_head.num_classes = len(class_names)

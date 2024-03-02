@@ -44,8 +44,44 @@ class SAN(VideoMaskFormer):
         class_names = [c.strip() for c in MetadataCatalog.get(dataset_name).thing_classes]
         return class_names
 
+    def inference(self, frames, dataset_name, height, width):
+        class_names = self.get_class_name_list(dataset_name)
+        self.sem_seg_head.num_classes = len(class_names)
+
+        ori_images = []
+        for frame in frames:
+            ori_images.append(frame.to(self.device))
+        images = [(x - self.pixel_mean) / self.pixel_std for x in ori_images]
+        images = ImageList.from_tensors(images, self.size_divisibility)
+
+        ori_images = ImageList.from_tensors(ori_images, self.size_divisibility)
+
+        clip_mg_feats, clip_bk_feats = self.clip_adapter.front_encode_image(ori_images.tensor)
+        text_feats = self.clip_adapter.encode_text(class_names)
+
+        features = self.backbone(images.tensor)
+        outputs = self.sem_seg_head(features, extra_feats=clip_mg_feats)
+
+        clip_feats = self.clip_adapter.post_encode_image(clip_bk_feats, outputs['class_attn_biases'].flatten(0, 1))
+        outputs["pred_logits"] = einops.rearrange(self.clip_adapter.cal_sim_logits(text_feats, clip_feats), '(b t) q c -> b t q c', b=1).mean(dim=1)
+
+        mask_cls_results = outputs["pred_logits"]
+        mask_pred_results = outputs["pred_masks"]
+
+        mask_cls_result, mask_pred_result = retry_if_cuda_oom(self.postprocess)(mask_cls_results[0], mask_pred_results[0], images.tensor.shape[-2:])
+
+        del outputs
+
+        image_size = images.image_sizes[0]  # image size without padding after data augmentation
+
+        return retry_if_cuda_oom(self.inference_video)(self.num_queries, len(class_names), mask_cls_result, mask_pred_result, image_size, height, width)
+
     def forward(self, batched_inputs):
-        dataset_name = batched_inputs[0]["dataset_name"]
+        if self.training:
+            dataset_name = "ytvis_2019_train2coco"
+        else:
+            dataset_name = list(set(x["dataset_name"] for x in batched_inputs))
+            dataset_name = dataset_name[0]
 
         class_names = self.get_class_name_list(dataset_name)
         self.sem_seg_head.num_classes = len(class_names)
@@ -145,7 +181,11 @@ class SANOnline(MinVIS):
                     segments_info (list[dict]): Describe each segment in `panoptic_seg`.
                         Each dict contains keys "id", "category_id", "isthing".
         """
-        dataset_name = batched_inputs[0]["dataset_name"]
+        if self.training:
+            dataset_name = "ytvis_2019_train2coco"
+        else:
+            dataset_name = list(set(x["dataset_name"] for x in batched_inputs))
+            dataset_name = dataset_name[0]
 
         class_names = self.get_class_name_list(dataset_name)
         self.sem_seg_head.num_classes = len(class_names)
