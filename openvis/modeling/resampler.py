@@ -6,7 +6,324 @@ import torch.nn.functional as F
 from .transformer_decoder.video_mask2former_transformer_decoder import SelfAttentionLayer, CrossAttentionLayer, FFNLayer, MLP
 
 
+class DecoupledTemporalInstanceResampler(nn.Module):
+
+    def __init__(self, hidden_dim=256, feed_dim=2048, nqueries=100, nheads=8, nlayers=6):
+        super().__init__()
+        # define Transformer decoder here
+        self.num_heads = nheads
+        self.num_layers = nlayers
+
+        self.long_aggregate_layers = nn.ModuleList()
+        self.short_aggregate_layers = nn.ModuleList()
+        self.aggregate_norms = nn.ModuleList()
+        self.ffn_layers = nn.ModuleList()
+
+        self.tgt_ca_layers = nn.ModuleList()
+        self.tgt_sa_layers = nn.ModuleList()
+        self.tgt_ffn_layers = nn.ModuleList()
+
+        for _ in range(self.num_layers):
+            self.long_aggregate_layers.append(
+                SelfAttentionLayer(
+                    d_model=hidden_dim,
+                    nhead=nheads,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+            self.short_aggregate_layers.append(
+                nn.Sequential(
+                    nn.Conv1d(hidden_dim, hidden_dim,
+                              kernel_size=5, stride=1,
+                              padding='same', padding_mode='replicate'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv1d(hidden_dim, hidden_dim,
+                              kernel_size=3, stride=1,
+                              padding='same', padding_mode='replicate'),
+                )
+            )
+
+            self.aggregate_norms.append(nn.LayerNorm(hidden_dim))
+
+            self.ffn_layers.append(
+                FFNLayer(
+                    d_model=hidden_dim,
+                    dim_feedforward=feed_dim,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+            self.tgt_sa_layers.append(
+                SelfAttentionLayer(
+                    d_model=hidden_dim,
+                    nhead=nheads,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+            self.tgt_ca_layers.append(
+                CrossAttentionLayer(
+                    d_model=hidden_dim,
+                    nhead=nheads,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+            self.tgt_ffn_layers.append(
+                FFNLayer(
+                    d_model=hidden_dim,
+                    dim_feedforward=feed_dim,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+        self.decode_norm = nn.LayerNorm(hidden_dim)
+
+        self.nqueries = nqueries
+        # learnable query features
+        self.query_emb = nn.Embedding(nqueries, hidden_dim)
+        # learnable query p.e.
+        self.query_pos = nn.Embedding(nqueries, hidden_dim)
+
+        # output FFNs
+        self.attn_embed = MLP(hidden_dim, hidden_dim, hidden_dim, 3)
+        self.mask_embed = MLP(hidden_dim, hidden_dim, hidden_dim, 3)
+
+        self.adapter = None
+        self.text_feats = None
+
+    def forward(self, frame_embeds, mask_feats, attn_feats, adapter=None, clip_bk_feats=None, text_feats=None):
+        self.adapter = adapter
+        self.text_feats = text_feats
+
+        predictions_class = []
+        predictions_mask = []
+
+        bs, t, q = frame_embeds.shape[:3]
+
+        # QxNxC
+        tgt = self.query_emb.weight.unsqueeze(1).repeat(1, bs * t, 1)
+        query_pos = self.query_pos.weight.unsqueeze(1).repeat(1, bs * t, 1)
+
+        logits = self.forward_class_predictions(tgt, attn_feats, clip_bk_feats)
+        masks = self.forward_mask_predictions(tgt, mask_feats)
+        predictions_class.append(logits)
+        predictions_mask.append(masks)
+
+        frame_tgt = einops.rearrange(frame_embeds, 'b t q c -> t (b q) c')
+
+        t_tgt = frame_tgt
+
+        for i in range(self.num_layers):
+
+            long_tgt = self.long_aggregate_layers[i](t_tgt, tgt_mask=None, tgt_key_padding_mask=None, query_pos=None)
+            short_tgt = long_tgt.permute(1, 2, 0)  # (bq, c, t)
+            short_tgt = (self.short_aggregate_layers[i](short_tgt) + short_tgt).transpose(1, 2)
+            t_tgt = self.aggregate_norms[i](short_tgt)
+            t_tgt = t_tgt.permute(1, 0, 2)
+            t_tgt = einops.rearrange(t_tgt, 't (b q) c -> q (b t) c', b=bs)
+            t_tgt = self.ffn_layers[i](t_tgt)
+
+            sep_frame_mem = einops.rearrange(t_tgt, 't (b q) c -> (q t) b c', b=bs)
+            sep_frame_mem = sep_frame_mem.repeat(1, t, 1)
+
+            tgt = self.tgt_ca_layers[i](tgt, sep_frame_mem, memory_mask=None, memory_key_padding_mask=None, pos=None, query_pos=query_pos)
+            tgt = self.tgt_sa_layers[i](tgt, tgt_mask=None, tgt_key_padding_mask=None, query_pos=query_pos)
+            tgt = self.tgt_ffn_layers[i](tgt)
+
+            logits = self.forward_class_predictions(tgt, attn_feats, clip_bk_feats)
+            masks = self.forward_mask_predictions(tgt, mask_feats)
+            predictions_class.append(logits)
+            predictions_mask.append(masks)
+
+            t_tgt = einops.rearrange(t_tgt, 'q (b t) c -> t (b q) c', b=bs)
+
+        for i in range(len(predictions_class)):
+            predictions_class[i] = einops.rearrange(predictions_class[i], '(b t) q c -> b t q c', b=bs)
+
+        for i in range(len(predictions_mask)):
+            predictions_mask[i] = einops.rearrange(predictions_mask[i], '(b t) q h w -> b q t h w', b=bs)
+
+        out = {
+            'pred_logits': predictions_class[-1],
+            'pred_masks': predictions_mask[-1],
+            'aux_outputs': self._set_aux_loss(predictions_class, predictions_mask)
+        }
+        self.adapter = None
+        self.text_feats = None
+        return out
+
+    def forward_mask_predictions(self, output, mask_feats):
+        output = self.decode_norm(output).transpose(1, 0)
+
+        mask_embed = self.mask_embed(output)
+        masks = torch.einsum("bqc,bchw->bqhw", mask_embed, mask_feats)
+
+        return masks
+
+    def forward_class_predictions(self, output, attn_feats, clip_bk_feats):
+        output = self.decode_norm(output).transpose(1, 0)
+
+        attn_embed = self.attn_embed(output)
+        attn_biases  = torch.einsum("bqc,bnchw->bnqhw", attn_embed, attn_feats)
+
+        clip_feats = self.adapter.post_encode_image(clip_bk_feats, attn_biases)
+        logits = self.adapter.cal_sim_logits(self.text_feats, clip_feats)
+
+        return logits
+
+    @torch.jit.unused
+    def _set_aux_loss(self, out_attn_biases, out_masks):
+        # this is a workaround to make torchscript happy, as torchscript
+        # doesn't support dictionary with non-homogeneous values, such
+        # as a dict having both a Tensor and a list.
+        return [{"pred_logits": a, "pred_masks": b} for a, b in zip(out_attn_biases[:-1], out_masks[:-1])]
+
+
 class TemporalInstanceResampler(nn.Module):
+
+    def __init__(self, hidden_dim=256, feed_dim=2048, nheads=8, nlayers=6):
+        super().__init__()
+        # define Transformer decoder here
+        self.num_heads = nheads
+        self.num_layers = nlayers
+
+        self.long_aggregate_layers = nn.ModuleList()
+        self.short_aggregate_layers = nn.ModuleList()
+        self.aggregate_norms = nn.ModuleList()
+        self.transformer_ffn_layers = nn.ModuleList()
+
+        for _ in range(self.num_layers):
+            self.long_aggregate_layers.append(
+                SelfAttentionLayer(
+                    d_model=hidden_dim,
+                    nhead=nheads,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+            self.short_aggregate_layers.append(
+                nn.Sequential(
+                    nn.Conv1d(hidden_dim, hidden_dim,
+                              kernel_size=5, stride=1,
+                              padding='same', padding_mode='replicate'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv1d(hidden_dim, hidden_dim,
+                              kernel_size=3, stride=1,
+                              padding='same', padding_mode='replicate'),
+                )
+            )
+
+            self.aggregate_norms.append(nn.LayerNorm(hidden_dim))
+
+            self.transformer_ffn_layers.append(
+                FFNLayer(
+                    d_model=hidden_dim,
+                    dim_feedforward=feed_dim,
+                    dropout=0.0,
+                    normalize_before=False,
+                )
+            )
+
+        self.decode_norm = nn.LayerNorm(hidden_dim)
+
+        # output FFNs
+        self.attn_embed = MLP(hidden_dim, hidden_dim, hidden_dim, 3)
+        self.mask_embed = MLP(hidden_dim, hidden_dim, hidden_dim, 3)
+
+        self.adapter = None
+        self.text_feats = None
+
+    def forward(self, frame_embeds, mask_feats, attn_feats, adapter=None, clip_bk_feats=None, text_feats=None):
+        self.adapter = adapter
+        self.text_feats = text_feats
+
+        predictions_class = []
+        predictions_mask = []
+
+        bs, t, q = frame_embeds.shape[:3]
+        outputs_class, outputs_mask = self.forward_prediction_heads(einops.rearrange(frame_embeds, 'b t q c -> q (b t) c'), mask_feats, attn_feats, clip_bk_feats)
+
+        predictions_class.append(outputs_class)
+        predictions_mask.append(outputs_mask)
+
+        frame_tgt = einops.rearrange(frame_embeds, 'b t q c -> t (b q) c')
+
+        temporal_tgt = frame_tgt
+
+        for i in range(self.num_layers):
+            long_tgt = self.long_aggregate_layers[i](
+                temporal_tgt, tgt_mask=None,
+                tgt_key_padding_mask=None,
+                query_pos=None
+            )
+
+            short_tgt = long_tgt.permute(1, 2, 0)  # (bq, c, t)
+            short_tgt = (self.short_aggregate_layers[i](short_tgt) + short_tgt).transpose(1, 2)
+
+            temporal_tgt = self.aggregate_norms[i](short_tgt)
+            temporal_tgt = temporal_tgt.permute(1, 0, 2)
+
+            temporal_tgt = self.transformer_ffn_layers[i](temporal_tgt)
+
+            temporal_tgt = einops.rearrange(temporal_tgt, 't (b q) c -> q (b t) c', b=bs)
+
+            outputs_class, outputs_mask = self.forward_prediction_heads(temporal_tgt, mask_feats, attn_feats, clip_bk_feats)
+
+            predictions_class.append(outputs_class)
+            predictions_mask.append(outputs_mask)
+
+            temporal_tgt = einops.rearrange(temporal_tgt, 'q (b t) c -> t (b q) c', b=bs)
+
+        for i in range(len(predictions_mask)):
+            predictions_mask[i] = einops.rearrange(predictions_mask[i], '(b t) q h w -> b q t h w', b=bs)
+
+        for i in range(len(predictions_class)):
+            predictions_class[i] = einops.rearrange(predictions_class[i], '(b t) q c -> b t q c', b=bs)
+
+        pred_embeds = self.decode_norm(temporal_tgt)
+        pred_embeds = einops.rearrange(pred_embeds, 't (b q) c -> b t q c', b=bs)
+
+        out = {
+            'pred_logits': predictions_class[-1],
+            'pred_masks': predictions_mask[-1],
+            'pred_embeds': pred_embeds,
+            'aux_outputs': self._set_aux_loss(predictions_class, predictions_mask)
+        }
+        self.adapter = None
+        self.text_feats = None
+        return out
+
+    def forward_prediction_heads(self, output, mask_feats, attn_feats, clip_bk_feats):
+        output = self.decode_norm(output).transpose(1, 0)
+
+        mask_embed = self.mask_embed(output)
+        masks = torch.einsum("bqc,bchw->bqhw", mask_embed, mask_feats)
+
+        attn_embed = self.attn_embed(output)
+        attn_biases  = torch.einsum("bqc,bnchw->bnqhw", attn_embed, attn_feats)
+
+        clip_feats = self.adapter.post_encode_image(clip_bk_feats, attn_biases)
+        logits = self.adapter.cal_sim_logits(self.text_feats, clip_feats)
+
+        return logits, masks
+
+    @torch.jit.unused
+    def _set_aux_loss(self, out_attn_biases, out_masks):
+        # this is a workaround to make torchscript happy, as torchscript
+        # doesn't support dictionary with non-homogeneous values, such
+        # as a dict having both a Tensor and a list.
+        return [{"pred_logits": a, "pred_masks": b} for a, b in zip(out_attn_biases[:-1], out_masks[:-1])]
+
+
+class RawTemporalInstanceResampler(nn.Module):
 
     def __init__(self, hidden_dim=256, feed_dim=2048, nheads=8, nlayers=6, window_size=10):
         super().__init__()
@@ -267,7 +584,8 @@ class TemporalInstanceResampler(nn.Module):
         attn_mask = (attn_mask.sigmoid().flatten(2).unsqueeze(1).repeat(1, self.num_heads, 1, 1).flatten(0, 1) < 0.5).bool()
         attn_mask = attn_mask.detach()
 
-        logits = self.adapter.get_sim_logits_frame(clip_bk_feats, attn_biases, self.text_feats)
+        clip_feats = self.adapter.post_encode_image(clip_bk_feats, attn_biases)
+        logits = self.adapter.cal_sim_logits(self.text_feats, clip_feats)
 
         return logits, masks, attn_mask
 

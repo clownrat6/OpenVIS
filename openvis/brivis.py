@@ -37,16 +37,14 @@ class BriVIS(SANOnline):
             p.requires_grad_(False)
         for p in self.sem_seg_head.parameters():
             p.requires_grad_(False)
-        for n, p in self.adapter.named_parameters():
-            if 'attn_proj' in n:
-                p.requires_grad_(False)
-
+        for p in self.clip_adapter.parameters():
+            p.requires_grad_(False)
         # these two variables are used for monitoring and modifying training process.
         self.iter = 0
         self.max_iter_num = max_iter_num
 
         # `nheads` is corresponding to CLIP version.
-        self.resampler = TemporalInstanceResampler(hidden_dim=256, feed_dim=2048, nheads=8, nlayers=6, window_size=self.window_size)
+        self.resampler = TemporalInstanceResampler(hidden_dim=256, feed_dim=2048, nheads=8, nlayers=6)
         self.brownian_criterion = BrownianBridgeCriterion(hidden_dim=256, proj_dim=256)
 
     @classmethod
@@ -130,22 +128,26 @@ class BriVIS(SANOnline):
                     segments_info (list[dict]): Describe each segment in `panoptic_seg`.
                         Each dict contains keys "id", "category_id", "isthing".
         """
-        dataset_name = list(set([x["dataset_name"] for x in batched_inputs]))
-        assert len(dataset_name) == 1, "only supports single dataset."
-        dataset_name = dataset_name[0]
+        if self.training:
+            dataset_name = "ytvis_2019_train2coco"
+        else:
+            dataset_name = list(set(x["dataset_name"] for x in batched_inputs))
+            dataset_name = dataset_name[0]
 
         class_names = self.get_class_name_list(dataset_name)
         self.sem_seg_head.num_classes = len(class_names)
 
-        images = []
+        ori_images = []
         for video in batched_inputs:
             for frame in video["image"]:
-                images.append(frame.to(self.device))
-        images = [(x - self.pixel_mean) / self.pixel_std for x in images]
+                ori_images.append(frame.to(self.device))
+        images = [(x - self.pixel_mean) / self.pixel_std for x in ori_images]
         images = ImageList.from_tensors(images, self.size_divisibility)
 
-        clip_mg_feats, clip_bk_feats = self.adapter.front_vis_forward(images.tensor)
-        text_feats = self.adapter.txt_forward(class_names)
+        ori_images = ImageList.from_tensors(ori_images, self.size_divisibility)
+
+        clip_mg_feats, clip_bk_feats = self.clip_adapter.front_encode_image(ori_images.tensor)
+        text_feats = self.clip_adapter.encode_text(class_names)
 
         if not self.training and self.window_inference:
             outputs = self.run_window_inference(images.tensor, clip_bk_feats, clip_mg_feats, text_feats)
@@ -163,14 +165,15 @@ class BriVIS(SANOnline):
             # class_attn_biases: (1, bt, n, q, h, w) -> (b, t, n, q, h, w)
             frame_attn_biases = einops.rearrange(image_outputs['class_attn_biases'][0], '(b t) n q h w -> b t n q h w', b=len(batched_inputs))
             # pred_logits: (b, t, q, c)
-            image_outputs['pred_logits'] = self.adapter.get_sim_logits(clip_bk_feats, frame_attn_biases, text_feats)
+            clip_feats = self.clip_adapter.post_encode_image(clip_bk_feats, frame_attn_biases.flatten(0, 1))
+            image_outputs["pred_logits"] = einops.rearrange(self.clip_adapter.cal_sim_logits(text_feats, clip_feats), '(b t) q c -> b t q c', b=len(batched_inputs))
             # pred_masks: (1, q, bt, h, w) -> (b, q, t, h, w)
             image_outputs['pred_masks'] = einops.rearrange(image_outputs['pred_masks'][0], 'q (b t) h w -> b q t h w', b=len(batched_inputs))
 
             indices, frame_embeds = batch_video_match_via_embeds(image_outputs['pred_embeds'])
             image_outputs = self.reset_image_output_order(image_outputs, indices)
 
-            outputs = self.resampler(image_outputs['ms_feats'], image_outputs['ms_pos'], image_outputs['size_list'], frame_embeds, image_outputs['mask_feats'], image_outputs['attn_feats'], self.adapter, clip_bk_feats, text_feats)
+            outputs = self.resampler(frame_embeds, image_outputs['mask_feats'], image_outputs['attn_feats'], self.clip_adapter, clip_bk_feats, text_feats)
 
         if self.training:
             # mask classification target
@@ -302,7 +305,7 @@ class BriVIS(SANOnline):
 
         size_list = image_outputs['size_list']
 
-        outputs = self.resampler(overall_ms_src, overall_ms_pos, size_list, overall_frame_embeds, overall_mask_feats, overall_attn_feats, self.adapter, overall_clip_bk_feats, text_feats)
+        outputs = self.resampler(overall_ms_src, overall_ms_pos, size_list, overall_frame_embeds, overall_mask_feats, overall_attn_feats, self.clip_adapter, overall_clip_bk_feats, text_feats)
 
         del overall_ms_src, overall_ms_pos, overall_frame_embeds, overall_mask_feats, overall_attn_feats, overall_clip_bk_feats, text_feats
         torch.cuda.empty_cache()
