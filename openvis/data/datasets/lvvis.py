@@ -59,6 +59,8 @@ _PREDEFINED_SPLITS_LVVIS = {
                     "lvvis/train_ytvis_style.json"),
     "lvvis_val":   ("lvvis/val/JPEGImages",
                     "lvvis/val_ytvis_style.json"),
+    "lvvis_test":   ("lvvis/test/JPEGImages",
+                    "lvvis/test_ytvis_style.json"),
 }
 
 

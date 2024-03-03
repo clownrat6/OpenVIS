@@ -153,6 +153,8 @@ def add_open_vocabulary_config(cfg):
     cfg.MODEL.CLIP_ADAPTER.CLIP_MODEL_NAME = "ViT-B/16"
     cfg.MODEL.CLIP_ADAPTER.CLIP_NUM_HEADS = 12
     cfg.MODEL.CLIP_ADAPTER.CLIP_EMBED_DIMS = 512
+    # for side adapter inserting features
+    cfg.MODEL.CLIP_ADAPTER.BROKEN_IDS = [3, 6, 9]
     # for clip score ensemble weights
     cfg.MODEL.CLIP_ADAPTER.CLIP_ENSEMBLE = True
     cfg.MODEL.CLIP_ADAPTER.CLIP_ENSEMBLE_WEIGHT = 0.8

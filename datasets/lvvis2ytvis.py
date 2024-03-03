@@ -84,6 +84,30 @@ def formatting(src_json, dst_json, img_folder):
     json.dump(ytvis_json, open(dst_json, 'w'))
 
 
+def construct_json(folder,cats):
+    vid_list = os.listdir(folder)
+
+    total_json = {
+        'categories': cats,
+    }
+
+    vids = []
+    for idx, vid_folder in enumerate(tqdm(vid_list)):
+        frame_list = os.listdir(os.path.join(folder, vid_folder))
+        frame_paths = [os.path.join(vid_folder, x) for x in frame_list]
+        w, h = imagesize.get(os.path.join(folder, frame_paths[0]))
+        vids.append({
+            'id': idx,
+            'height': h,
+            'width': w,
+            'length': len(frame_paths),
+            'file_names': frame_paths,
+        })
+
+    total_json['videos'] = vids
+
+    return total_json
+
 # formatting train annotations
 img_folder = 'datasets/lvvis/train/JPEGImages'
 src_json = 'datasets/lvvis/train_instances.json'
@@ -98,3 +122,12 @@ dst_json = 'datasets/lvvis/val_ytvis_style.json'
 
 print("Start Converting val annotation:")
 formatting(src_json, dst_json, img_folder)
+
+img_folder = 'datasets/lvvis/test/JPEGImages'
+src_json = 'datasets/lvvis/val_instances.json'
+dst_json = 'datasets/lvvis/test_ytvis_style.json'
+
+tmp = json.load(open(src_json, 'r'))
+res = construct_json(img_folder, tmp['categories'])
+json.dump(res, open(dst_json, 'w'))
+

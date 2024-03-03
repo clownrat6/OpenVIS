@@ -36,7 +36,12 @@ class SAN(VideoMaskFormer):
         args_dict = VideoMaskFormer.from_config(cfg)
 
         # open-vocabulary
-        args_dict["clip_adapter"] = SideAdapter(text_templates=get_predefined_templates("vild"))
+        args_dict["clip_adapter"] = SideAdapter(
+            cfg.MODEL.CLIP_ADAPTER.CLIP_MODEL_NAME, 
+            broken_idx=cfg.MODEL.CLIP_ADAPTER.BROKEN_IDS[-1], 
+            merge_ids=cfg.MODEL.CLIP_ADAPTER.BROKEN_IDS, 
+            text_templates=get_predefined_templates("vild")
+        )
 
         return args_dict
 
@@ -146,10 +151,24 @@ class SANOnline(MinVIS):
     """
 
     @configurable
-    def __init__(self, **kwargs):
+    def __init__(self, clip_adapter, **kwargs):
         super().__init__(**kwargs)
 
-        self.adapter = SideAdapter(text_templates=get_predefined_templates("vild"))
+        self.clip_adapter = clip_adapter
+
+    @classmethod
+    def from_config(self, cfg):
+        args_dict = MinVIS.from_config(cfg)
+
+        # open-vocabulary
+        args_dict["clip_adapter"] = SideAdapter(
+            cfg.MODEL.CLIP_ADAPTER.CLIP_MODEL_NAME, 
+            broken_idx=cfg.MODEL.CLIP_ADAPTER.BROKEN_IDS[-1], 
+            merge_ids=cfg.MODEL.CLIP_ADAPTER.BROKEN_IDS, 
+            text_templates=get_predefined_templates("vild")
+        )
+
+        return args_dict
 
     def get_class_name_list(self, dataset_name):
         class_names = [c.strip() for c in MetadataCatalog.get(dataset_name).thing_classes]
@@ -199,8 +218,8 @@ class SANOnline(MinVIS):
 
         ori_images = ImageList.from_tensors(ori_images, self.size_divisibility)
 
-        clip_mg_feats, clip_bk_feats = self.adapter.front_encode_image(ori_images.tensor)
-        text_feats = self.adapter.encode_text(class_names)
+        clip_mg_feats, clip_bk_feats = self.clip_adapter.front_encode_image(ori_images.tensor)
+        text_feats = self.clip_adapter.encode_text(class_names)
 
         if not self.training and self.window_inference:
             outputs = self.run_window_inference(images.tensor, clip_mg_feats, self.window_size)
@@ -208,14 +227,14 @@ class SANOnline(MinVIS):
             features = self.backbone(images.tensor)
             outputs = self.sem_seg_head(features, extra_feats=clip_mg_feats)
 
-        clip_feats = self.adapter.post_encode_image(clip_bk_feats, outputs['class_attn_biases'].flatten(0, 1))
-        outputs["pred_logits"] = einops.rearrange(self.adapter.cal_sim_logits(text_feats, clip_feats), '(b t) q c -> b t q c', b=len(batched_inputs))
+        clip_feats = self.clip_adapter.post_encode_image(clip_bk_feats, outputs['class_attn_biases'].flatten(0, 1))
+        outputs["pred_logits"] = einops.rearrange(self.clip_adapter.cal_sim_logits(text_feats, clip_feats), '(b t) q c -> b t q c', b=len(batched_inputs))
 
         if self.training:
             if 'aux_outputs' in outputs:
                 for idx, pred in enumerate(outputs["aux_outputs"]):
-                    clip_feats = self.adapter.post_encode_image(clip_bk_feats, pred['class_attn_biases'].flatten(0, 1))
-                    outputs['aux_outputs'][idx]['pred_logits'] = einops.rearrange(self.adapter.cal_sim_logits(text_feats, clip_feats), '(b t) q c -> b t q c', b=len(batched_inputs))
+                    clip_feats = self.clip_adapter.post_encode_image(clip_bk_feats, pred['class_attn_biases'].flatten(0, 1))
+                    outputs['aux_outputs'][idx]['pred_logits'] = einops.rearrange(self.clip_adapter.cal_sim_logits(text_feats, clip_feats), '(b t) q c -> b t q c', b=len(batched_inputs))
 
             # mask classification target
             targets = self.prepare_targets(batched_inputs, images)
