@@ -114,7 +114,7 @@ class Trainer(DefaultTrainer):
     @classmethod
     def build_test_loader(cls, cfg, dataset_name):
         dataset_name = cfg.DATASETS.TEST[0]
-        if dataset_name in ["ytvis_2019_val", "ytvis_2019_test", "ytvis_2021_val", "ytvis_2021_test", "uvo_val", "ovis_val", "burst_ytvis_val", "lvvis_val", "ytvis_2019_train", "ovis_train"]:
+        if dataset_name in ["ytvis_2019_val", "ytvis_2019_test", "ytvis_2021_val", "ytvis_2021_test", "ovis_val", "lvvis_val", "lvvis_test"]:
             mapper = YTVISDatasetMapper(cfg, is_train=False)
         elif dataset_name in ["burst_val", "burst_test"]:
             mapper = BURSTDatasetMapper(cfg, is_train=False)
