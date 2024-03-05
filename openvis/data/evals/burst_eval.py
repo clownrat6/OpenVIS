@@ -18,7 +18,7 @@ from detectron2.evaluation import DatasetEvaluator
 from detectron2.utils.file_io import PathManager
 from detectron2.utils.logger import create_small_table
 
-from ..burst_api.bursteval import BURSTesval
+from .bursteval import BURSTesval
 
 
 class BURSTEvaluator(DatasetEvaluator):

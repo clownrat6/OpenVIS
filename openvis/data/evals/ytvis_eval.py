@@ -22,8 +22,8 @@ from detectron2.evaluation import DatasetEvaluator
 from detectron2.utils.file_io import PathManager
 from detectron2.utils.logger import create_small_table
 
-from ..ytvis_api.ytvos import YTVOS
-from ..ytvis_api.ytvoseval import YTVOSeval
+from .ytvos import YTVOS
+from .ytvoseval import YTVOSeval
 
 
 class YTVISEvaluator(DatasetEvaluator):
