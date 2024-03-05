@@ -38,8 +38,8 @@ class SAN(VideoMaskFormer):
         # open-vocabulary
         args_dict["clip_adapter"] = SideAdapter(
             cfg.MODEL.CLIP_ADAPTER.CLIP_MODEL_NAME, 
-            broken_idx=cfg.MODEL.CLIP_ADAPTER.BROKEN_IDS[-1], 
-            merge_ids=cfg.MODEL.CLIP_ADAPTER.BROKEN_IDS, 
+            broken_idx=cfg.MODEL.CLIP_ADAPTER.BROKEN_ID, 
+            merge_ids=cfg.MODEL.CLIP_ADAPTER.MERGE_IDS, 
             text_templates=get_predefined_templates("vild")
         )
 
@@ -163,8 +163,8 @@ class SANOnline(MinVIS):
         # open-vocabulary
         args_dict["clip_adapter"] = SideAdapter(
             cfg.MODEL.CLIP_ADAPTER.CLIP_MODEL_NAME, 
-            broken_idx=cfg.MODEL.CLIP_ADAPTER.BROKEN_IDS[-1], 
-            merge_ids=cfg.MODEL.CLIP_ADAPTER.BROKEN_IDS, 
+            broken_idx=cfg.MODEL.CLIP_ADAPTER.BROKEN_ID, 
+            merge_ids=cfg.MODEL.CLIP_ADAPTER.MERGE_IDS, 
             text_templates=get_predefined_templates("vild")
         )
 
