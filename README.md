@@ -14,16 +14,11 @@
 
 1. Reproducing [OpenVIS: Open-vocabulary Video Instance Segmentation](https://arxiv.org/pdf/2305.16835.pdf):
 ```bash
-python train_net.py --config-file configs/openvoc_lvvis/openvis_R50_bs8_12000st.yaml --num-gpus 4
+python train_net.py --config-file configs/openvoc_ytvis/openvis_R50_bs16_6000st.yaml --num-gpus 8
 ``` 
 
-2. Reproducing [Towards Open-Vocabulary Video Instance Segmentation](https://openaccess.thecvf.com/content/ICCV2023/papers/Wang_Towards_Open-Vocabulary_Video_Instance_Segmentation_ICCV_2023_paper.pdf):
+2. Reproducing BriVIS:
 ```bash
-python train_net.py --config-file configs/openvoc_lvvis/ov2seg_R50_bs8_12000st.yaml --num-gpus 4
-```
-
-3. Reproducing BriVIS:
-```bash
-python train_net.py --config-file configs/openvoc_lvvis/san_online_R50_bs8_12000st.yaml --num-gpus 4
-python train_net.py --config-file configs/openvoc_lvvis/brivis_R50_bs8_12000st.yaml --num-gpus 4 MODEL.WEIGHTS work_dirs/openvoc_lvvis/san_online_R50_bs8_12000st/model_final.pth
+python train_net.py --config-file configs/openvoc_ytvis_coco/san_online_R50_bs16_6000st.yaml --num-gpus 8
+python train_net.py --config-file configs/openvoc_ytvis_coco/brivis_R50_bs16_6000st.yaml --num-gpus 8 MODEL.WEIGHTS work_dirs/openvoc_ytvis_coco/san_online_R50_bs16_6000st/model_final.pth
 ```
