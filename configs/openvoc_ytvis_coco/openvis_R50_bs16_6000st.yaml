@@ -1,10 +1,11 @@
 _BASE_: Base.yaml
 MODEL:
-  META_ARCHITECTURE: "SimpleBaselineOnline"
+  WEIGHTS: "pretrained/model_final_3c8ec9.pkl"
+  META_ARCHITECTURE: "OpenVIS"
   SEM_SEG_HEAD:
     NAME: "MaskFormerHead"
     IGNORE_VALUE: 255
-    NUM_CLASSES: 40
+    NUM_CLASSES: 1
     LOSS_WEIGHT: 1.0
     CONVS_DIM: 256
     MASK_DIM: 256
@@ -16,7 +17,7 @@ MODEL:
     COMMON_STRIDE: 4
     TRANSFORMER_ENC_LAYERS: 6
   MASK_FORMER:
-    TRANSFORMER_DECODER_NAME: "EmbeddingFrameMultiScaleMaskedTransformerDecoder"
+    TRANSFORMER_DECODER_NAME: "VideoMultiScaleMaskedTransformerDecoder"
     TRANSFORMER_IN_FEATURE: "multi_scale_pixel_decoder"
     DEEP_SUPERVISION: True
     NO_OBJECT_WEIGHT: 0.1
@@ -37,19 +38,14 @@ MODEL:
     OVERSAMPLE_RATIO: 3.0
     IMPORTANCE_SAMPLE_RATIO: 0.75
     TEST:
-      WINDOW_INFERENCE: False
-      WINDOW_SIZE: 10
       SEMANTIC_ON: False
       INSTANCE_ON: True
       PANOPTIC_ON: False
       OVERLAP_THRESHOLD: 0.8
       OBJECT_MASK_THRESHOLD: 0.8
   CLIP_ADAPTER:
-    NAME: "BgClipAdapter"
+    NAME: "ClipAdapter"
     PROMPT_NAME: "vild"
     CLIP_MODEL_NAME: "ViT-B/16"
     CLIP_ENSEMBLE: True # use ensemble of two classification branches
     CLIP_ENSEMBLE_WEIGHT: 0.5
-    CLIP_EMBED_DIMS: 512
-INPUT:
-  SAMPLING_FRAME_NUM: 1

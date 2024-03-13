@@ -15,13 +15,14 @@ MODEL:
     # NORM: "SyncBN"
     RES5_MULTI_GRID: [1, 1, 1]  # not used
 DATASETS:
-  TRAIN: ("ytvis_2019_train",)
-  TEST: ("lvvis_val", )
+  TRAIN: ("ytvis_2019_train2coco", "coco_2017_train")
+  TEST: ("burst_val", )
+  DATASET_RATIO: [1.0, 0.75]
 SOLVER:
-  IMS_PER_BATCH: 8
+  IMS_PER_BATCH: 16
   BASE_LR: 0.0001
-  STEPS: (10000,)
-  MAX_ITER: 12000
+  STEPS: (5000,)
+  MAX_ITER: 6000
   CHECKPOINT_PERIOD: 500
   WARMUP_FACTOR: 1.0
   WARMUP_ITERS: 10
@@ -36,19 +37,27 @@ SOLVER:
   AMP:
     ENABLED: True
 INPUT:
-  MIN_SIZE_TRAIN_SAMPLING: "choice_by_clip"
   RANDOM_FLIP: "flip_by_clip"
   AUGMENTATIONS: []
   MIN_SIZE_TRAIN: (240, 360, 480)
+  MIN_SIZE_TRAIN_SAMPLING: "choice_by_clip"
   MIN_SIZE_TEST: 360
   CROP:
     ENABLED: False
     TYPE: "absolute_range"
     SIZE: (600, 720)
+  PSEUDO:
+    AUGMENTATIONS: ['rotation']
+    MIN_SIZE_TRAIN: (240, 360, 480)
+    MIN_SIZE_TRAIN_SAMPLING: "choice_by_clip"
+    CROP:
+      ENABLED: False
+      TYPE: "absolute_range"
+      SIZE: (600, 720)
   FORMAT: "RGB"
 TEST:
   EVAL_PERIOD: 500
 DATALOADER:
-  FILTER_EMPTY_ANNOTATIONS: False
+  FILTER_EMPTY_ANNOTATIONS: True
   NUM_WORKERS: 4
 VERSION: 2

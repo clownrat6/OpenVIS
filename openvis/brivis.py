@@ -213,14 +213,14 @@ class BriVIS(SANOnline):
     def frame_decoder_loss_reshape(self, outputs, targets, image_outputs=None):
         # flatten the t frames as an image with size of (th, w)
         outputs['pred_masks'] = einops.rearrange(outputs['pred_masks'], 'b q t h w -> b q () (t h) w')
-        outputs['pred_logits'] = outputs['pred_logits'][:, 0, :, :]
+        outputs['pred_logits'] = (outputs['pred_logits'][:, 0, :, :] + outputs['pred_logits'][:, -1, :, :]) / 2
         if image_outputs is not None:
             image_outputs['pred_masks'] = einops.rearrange(image_outputs['pred_masks'], 'b q t h w -> b q () (t h) w')
             image_outputs['pred_logits'] = image_outputs['pred_logits'].mean(dim=1)
         if 'aux_outputs' in outputs:
             for i in range(len(outputs['aux_outputs'])):
                 outputs['aux_outputs'][i]['pred_masks'] = einops.rearrange(outputs['aux_outputs'][i]['pred_masks'], 'b q t h w -> b q () (t h) w')
-                outputs['aux_outputs'][i]['pred_logits'] = outputs['aux_outputs'][i]['pred_logits'][:, 0, :, :]
+                outputs['aux_outputs'][i]['pred_logits'] = (outputs['aux_outputs'][i]['pred_logits'][:, 0, :, :] + outputs['aux_outputs'][i]['pred_logits'][:, -1, :, :]) / 2
 
         gt_instances = []
         for targets_per_video in targets:

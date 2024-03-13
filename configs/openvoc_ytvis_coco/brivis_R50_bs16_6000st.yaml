@@ -1,11 +1,11 @@
 _BASE_: Base.yaml
 MODEL:
-  WEIGHTS: 'work_dirs/openvoc_ytvis_2019/san_online_R50_bs8_12000st/model_0005999.pth'
+  WEIGHTS: 'work_dirs/openvoc_ytvis_2019/san_online_R50_bs16_6000st/model_final.pth'
   META_ARCHITECTURE: "BriVIS"
   SEM_SEG_HEAD:
     NAME: "MaskFormerHead"
     IGNORE_VALUE: 255
-    NUM_CLASSES: 1196
+    NUM_CLASSES: 101
     LOSS_WEIGHT: 1.0
     CONVS_DIM: 256
     MASK_DIM: 256
@@ -43,30 +43,8 @@ MODEL:
       PANOPTIC_ON: False
       OVERLAP_THRESHOLD: 0.8
       OBJECT_MASK_THRESHOLD: 0.8
-  FRAME_CLIP_ADAPTER:
-    NAME: "FrameClipAdapter"
-    PROMPT_LEARNER: "vild"
-    CLIP_MODEL_NAME: "ViT-B/16"
-    MASK_FILL: "mean"
-    MASK_EXPAND_RATIO: 1.0
-    MASK_THR: 0.5 # choose the foreground objects
-    MASK_MATTING: False # use soft background, default not used
-    REGION_RESIZED: True # resize to the input of clip, e.g., 224
-    CLIP_ENSEMBLE: True # use ensemble of two classification branches
-    CLIP_ENSEMBLE_WEIGHT: 0.5
-  VIDEO_CLIP_ADAPTER:
-    NAME: "VideoQueryClipAdapter"
-    PROMPT_LEARNER: "video_vild"
-    CLIP_MODEL_NAME: "ViT-B/16"
-    CLIP_ENSEMBLE: True # use ensemble of two classification branches
-    CLIP_ENSEMBLE_WEIGHT: 0.5
 INPUT:
   MIN_SIZE_TRAIN: (240, 360, 480)
   MIN_SIZE_TEST: 360
-  SAMPLING_FRAME_NUM: 5
-  SAMPLING_FRAME_RANGE: 2
-SOLVER:
-  IMS_PER_BATCH: 8
-  CHECKPOINT_PERIOD: 500
-TEST:
-  EVAL_PERIOD: 500
+  SAMPLING_FRAME_NUM: 3
+  SAMPLING_FRAME_RANGE: 20

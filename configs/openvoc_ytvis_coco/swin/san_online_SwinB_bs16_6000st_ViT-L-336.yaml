@@ -1,0 +1,24 @@
+_BASE_: ../san_online_R50_bs16_6000st.yaml
+MODEL:
+  BACKBONE:
+    NAME: "D2SwinTransformer"
+  SWIN:
+    EMBED_DIM: 128
+    DEPTHS: [2, 2, 18, 2]
+    NUM_HEADS: [4, 8, 16, 32]
+    WINDOW_SIZE: 12
+    APE: False
+    DROP_PATH_RATE: 0.3
+    PATCH_NORM: True
+    PRETRAIN_IMG_SIZE: 384
+  WEIGHTS: "pretrained/model_final_83d103.pkl"
+  PIXEL_MEAN: [123.675, 116.280, 103.530]
+  PIXEL_STD: [58.395, 57.120, 57.375]
+  CLIP_ADAPTER:
+    NAME: "SideAdapter"
+    CLIP_MODEL_NAME: "ViT-L/14@336px"
+    MERGE_IDS: [6, 12, 18]
+    BROKEN_ID: 21
+    CLIP_NUM_HEADS: 16
+INPUT:
+  MIN_SIZE_TEST: 480
