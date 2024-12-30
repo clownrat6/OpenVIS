@@ -63,22 +63,27 @@ class BURSTesval:
                       1117, 95, 1122, 99, 1132, 621, 1135, 625, 118, 1144, 126, 642, 1155, 133, 1162, 139, 154, 174, 185,
                       699, 1215, 714, 717, 1229, 211, 729, 221, 229, 747, 235, 237, 779, 276, 805, 299, 829, 852, 347,
                       371, 382, 896, 392, 926, 937, 428, 429, 961, 452, 979, 980, 982, 475, 480, 993, 1001, 502, 1018]
+        base_list = [4, 20, 34, 35, 36, 41, 45, 58, 60, 78, 79, 81, 91, 95, 99, 108, 118, 126, 127, 133, 139, 174, 176, 211, 221, 229, 235, 237, 276, 299, 347, 363, 365, 371, 382, 407, 408, 415, 428, 429, 453, 475, 480, 481, 499, 502, 544, 579, 621, 625, 642, 664, 672, 709, 714, 716, 780, 805, 813, 829, 844, 875, 877, 896, 926, 936, 937, 954, 960, 961, 980, 982, 1001, 1007, 1018, 1040, 1057, 1070, 1092, 1099, 1108, 1115, 1122, 1132, 1134, 1135, 1144, 1152, 1155, 1184, 1213, 1215, 1220, 1225, 1229]
         class_split_names = {
             "all": [x for x in all_names],
             "common": [x for x in all_names if class_name_to_id[x] in known_list],
-            "uncommon": [x for x in all_names if class_name_to_id[x] not in known_list]
+            "uncommon": [x for x in all_names if class_name_to_id[x] not in known_list],
+            "base": [x for x in all_names if class_name_to_id[x] in base_list],
+            "novel": [x for x in all_names if class_name_to_id[x] not in base_list]
         }
 
         ret_results = {
             "all": {},
             "common": {},
             "uncommon": {},
+            "base": {},
+            "novel": {},
         }
 
         # metrics = ("AP", "AP50", "AP75", "AP_area_s", "AP_area_m", "AP_area_l", "AP_time_s", "AP_time_m", "AP_time_l", "HOTA", "DetA", "AssA")
         metrics = ("AP", "AP50", "AP75", "HOTA", "DetA", "AssA")
         for metric in metrics:
-            for split_name in ["all", "common", "uncommon"]:
+            for split_name in ["all", "common", "uncommon", "base", "novel"]:
                 split_classes = class_split_names[split_name]
 
                 if metric == "AP":
@@ -97,10 +102,10 @@ class BURSTesval:
         table_data = []
         for metric in metrics:
             row = [metric]
-            for split_name in ["all", "common", "uncommon"]:
+            for split_name in ["all", "common", "uncommon", "base", "novel"]:
                 row.append(ret_results[split_name][metric])
             table_data.append(row)
 
-        print(tabulate(table_data, ["metric", "all", "common", "uncommon"]), '\n')
+        print(tabulate(table_data, ["metric", "all", "common", "uncommon", "base", "novel"]), '\n')
 
         return ret_results

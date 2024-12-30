@@ -110,7 +110,7 @@ class OpenVIS(VideoMaskFormer):
     def open_vocabulary_inference(self, scores: torch.Tensor, masks: torch.Tensor, frames: torch.Tensor, class_names):
         if len(scores) > 0:
             frame_len = len(frames)
-            part_len = 5
+            part_len = 2
             clip_cls = []
             valid_flag = []
             for idx in range(0, frame_len, part_len):
@@ -244,7 +244,7 @@ class OpenVISOnline(MinVIS):
     def open_vocabulary_inference(self, scores: torch.Tensor, masks: torch.Tensor, frames: torch.Tensor, class_names):
         if len(scores) > 0:
             frame_len = len(frames)
-            part_len = 10
+            part_len = 5
             clip_cls = []
             valid_flag = []
             for idx in range(0, frame_len, part_len):
@@ -277,5 +277,5 @@ class OpenVISOnline(MinVIS):
         else:
             scores = []
             masks = []
-        
+
         return scores, masks

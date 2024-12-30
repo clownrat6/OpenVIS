@@ -171,6 +171,7 @@ class YTVISEvaluator(DatasetEvaluator):
             file_path = os.path.join(self._output_dir, "results.json")
             self._logger.info("Saving results to {}".format(file_path))
             with PathManager.open(file_path, "w") as f:
+                # json.dump(predictions, f)
                 f.write(json.dumps(predictions))
                 f.flush()
 

@@ -10,3 +10,6 @@ from .san import SAN, SANOnline
 from .ov2seg import OV2Seg
 from .openvis import OpenVIS
 from .brivis import BriVIS
+from .brivis_v1 import BriVISV1
+from .brivis_v2 import BriVISV2
+from .brivis_v3 import BriVISV3

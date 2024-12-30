@@ -8,18 +8,11 @@ Dataset structure:
 openvis
 ├── datasets
 │   ├── ytvis_2019
+│   │   ├── ytvis_2019_train2coco.json
 │   │   ├── {train, valid, test}.json
 │   │   ├── {train, valid, test}/
 │   │   │   ├── JPEGImages/
 │   │   │   ├── Annotations/
-│   ├── ytvis_2021
-│   │   ├── {train, valid, test}/
-│   │   │   ├── JPEGImages/
-│   │   │   ├── instances.json
-│   ├── ovis
-│   │   ├── annotations_{train, valid, test}.json/
-│   │   ├── Images/
-│   │   │   ├── {train, valid, test}/
 │   ├── burst
 │   │   ├── annotations/
 │   │   │   ├── train/
@@ -36,9 +29,6 @@ openvis
 │   │   ├── {train, val}/
 │   │   │   ├── JPEGImages/
 │   ├── coco
-│   │   ├── coco2ytvis2019_{train, val}.json
-│   │   ├── coco2ytvis2021_{train, val}.json
-│   │   ├── coco2ovis_{train, val}.json
 │   │   ├── {train, val}2017/
 │   │   ├── annotations/
 │   │   │   ├── instances_{train, val}2017.json
@@ -51,14 +41,11 @@ openvis
 openvis
 ├── datasets
 │   ├── ytvis_2019
+│   │   ├── ytvis_2019_train2coco.json
 │   │   ├── {train, valid, test}.json
 │   │   ├── {train, valid, test}/
 │   │   │   ├── JPEGImages/
 │   │   │   ├── Annotations/
-│   ├── ytvis_2021
-│   │   ├── {train, valid, test}/
-│   │   │   ├── JPEGImages/
-│   │   │   ├── instances.json
 ```
 
 youtube-vis 2019:
@@ -68,28 +55,10 @@ youtube-vis 2019:
 4. unzip `{train,valid,test}.zip` to `datasets/ytvis_2019/{train,valid,test}/`
 5. put `{train,valid,test}.json` to `datasets/ytvis_2019/{train,valid,test}.json`
 
-youtube-vis 2021:
-1. register [3rd youtube vos challenge](https://competitions.codalab.org/competitions/28988)
-2. download `{train,valid,test}.zip` from [youtube-vis 2021 frames google drive](https://drive.google.com/drive/folders/12DxR2HWTVjULNwKVMdYAvhOmZ9gBxsX2)
-3. unzip `{train,valid,test}.zip` to `datasets/ytvis_2021/{train,valid,test}/`
-
-
-## OVIS
-
+This command is used for coco and ytvis-2019 joint training:
+```bash
+python datasets/ytvis2coco.py
 ```
-openvis
-├── datasets
-│   ├── ovis
-│   │   ├── annotations_{train, valid, test}.json/
-│   │   ├── Images/
-│   │   │   ├── {train, valid, test}/
-```
-
-1. register [Occluded Video Instance Segmentation](https://codalab.lisn.upsaclay.fr/competitions/4763#participate)
-2. download `{train,valid,test}.zip` from [OVIS frames google drive](https://drive.google.com/drive/folders/1eE4lLKCbv54E866XBVce_ebh3oXYq99b)
-3. download `{train,valid,test}.json` from [OVIS annotations google drive](https://drive.google.com/drive/folders/1eE4lLKCbv54E866XBVce_ebh3oXYq99b)
-4. unzip `{train,valid,test}.zip` to `datasets/ovis/Images/{train,valid,test}/`
-5. put `annotations/{train,valid,test}.json` to `datasets/ovis/annotations_{train,valid,test}.json`
 
 
 ## BURST

@@ -170,8 +170,16 @@ class BriVIS(SANOnline):
             # pred_masks: (1, q, bt, h, w) -> (b, q, t, h, w)
             image_outputs['pred_masks'] = einops.rearrange(image_outputs['pred_masks'][0], 'q (b t) h w -> b q t h w', b=len(batched_inputs))
 
+            # import time
+            # print(image_outputs['pred_embeds'].shape)
+            # start = time.time()
+            # 2.27s / iter
+            # frame_embeds = image_outputs['pred_embeds']
+            # 2.47s / iter
             indices, frame_embeds = batch_video_match_via_embeds(image_outputs['pred_embeds'])
             image_outputs = self.reset_image_output_order(image_outputs, indices)
+            # end = time.time()
+            # print(end - start)
 
             outputs = self.resampler(frame_embeds, image_outputs['mask_feats'], image_outputs['attn_feats'], self.clip_adapter, clip_bk_feats, text_feats)
 

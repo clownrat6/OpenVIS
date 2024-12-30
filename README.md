@@ -1,5 +1,9 @@
 # Instance Brownian Bridge as Texts for Open-vocabulary Video Instance Segmentation
 
+## matplotlib 安装字体
+
+https://linuxstory.org/install-new-fonts/
+
 ## Getting Started
 
 * Download [Mask2former R50 weights trained on COCO Instance Segmentation](https://github.com/facebookresearch/Mask2Former/blob/main/MODEL_ZOO.md) and put it in `pretrained/model_final_3c8ec9.pkl`

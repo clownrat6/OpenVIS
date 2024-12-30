@@ -167,7 +167,6 @@ class YTVOSeval:
         evaluateVid = self.evaluateVid
         maxDet = p.maxDets[-1]
         
-        
         self.evalImgs = [evaluateVid(vidId, catId, areaRng, maxDet)
                  for catId in catIds
                  for areaRng in p.areaRng

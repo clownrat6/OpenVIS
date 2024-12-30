@@ -16,7 +16,7 @@ MODEL:
     RES5_MULTI_GRID: [1, 1, 1]  # not used
 DATASETS:
   TRAIN: ("ytvis_2019_train2coco", "coco_2017_train")
-  TEST: ("burst_val", )
+  TEST: ("ytvis_2021_val", )
   DATASET_RATIO: [1.0, 0.75]
 SOLVER:
   IMS_PER_BATCH: 16
